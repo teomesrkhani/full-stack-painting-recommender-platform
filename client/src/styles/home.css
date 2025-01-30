@@ -1,0 +1,12 @@
+.home {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    color: #fcfcfc;
+    background: linear-gradient(-45deg, #ababab 0%, #dfdfdf 100%);
+    background-size: 500%;
+    animation: bg-animation 15s infinite alternate;
+    justify-content: center;
+    text-align: center;
+}
+  
