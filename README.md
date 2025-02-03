@@ -36,7 +36,7 @@ npm install
 
 7. Run client server:
 ```
-npm run dev
+npm run start
 ```
 
 8. Open your browser and go to http://localhost:5173 to view the application.
