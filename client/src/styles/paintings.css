@@ -1,3 +1,11 @@
+.generation-method {
+    font-size: smaller;
+    color: #666;
+    margin-top: 5px;
+    display: block; /* Ensure it's displayed */
+  }
+  
+
 .paintingContainer {
     position: fixed;
     top: 50%;

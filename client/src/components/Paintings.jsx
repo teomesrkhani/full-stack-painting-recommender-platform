@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import { debounce } from 'lodash';
+import { debounce, random } from 'lodash';
 import { FaChevronLeft, FaHeart } from 'react-icons/fa';
 import '../styles/paintings.css';
 import '../styles/title.css';
@@ -19,42 +19,57 @@ function PaintingGenerator() {
     artist: "",
     liked: false,
   });
-  const [xappToken, setXappToken] = useState("");
-  const [artistIDs, setArtistIDs] = useState([]);
 
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const response = await fetch("https://api.artsy.net/api/tokens/xapp_token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            client_id: "ENTER_YOUR_ID",
-            client_secret: "ENTER_YOUR_PASSWORD"
-          })
+  const [artistIDs, setArtistIDs] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationGenerated, setRecommendationGenerated] = useState(false);
+
+  const checkForRecommendations = async () => {
+    try {
+      const response = await fetch("http://localhost:5050/record");
+      const likes = await response.json();
+      console.log('likes', likes);
+      
+      if (likes.length > 0) {
+        const artistCountMap = new Map();
+  
+        likes.forEach(like => {
+          if (artistCountMap.has(like.artist)) {
+            artistCountMap.set(like.artist, artistCountMap.get(like.artist) + 1);
+          } else {
+            artistCountMap.set(like.artist, 1);
+          }
         });
-        const data = await response.json();
-        setXappToken(data.token);
-      } catch (error) {
-        console.error("Error fetching token:", error);
+        
+        const artists = Array.from(artistCountMap.keys());
+        const counts = Array.from(artistCountMap.values());
+        
+        const recResponse = await fetch("http://localhost:5050/recommend", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ artists, counts })
+        });
+        
+        const recs = await recResponse.json();
+        setRecommendations(recs);
+        setRecommendationGenerated(true);
+
       }
-    };
-    fetchToken();
-  }, []);
+    } catch (error) {
+      setRecommendationGenerated(false);
+      console.error("Recommendation error:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchArtistIDs = async () => {
       try {
-        const response = await fetch("/artists.txt");
-        const text = await response.text();
-        const lines = text.split("\n")
-          .map(line => line.trim())
-          .filter(Boolean)
-          .map(line => {
-            const [name, id] = line.split(',');
-            return {name, id};
-          })
-        setArtistIDs(lines);
+        const response = await fetch("/final_out.json");
+        const text = await response.json();
+        setArtistIDs(text);
+
       } catch (err) {
         console.error("Error loading artist IDs:", err);
       }
@@ -63,40 +78,86 @@ function PaintingGenerator() {
   }, []);
 
   const generatePainting = useCallback(async () => {
-    if (!xappToken || artistIDs.length === 0) return;
-
     try {
-      const randomLine = Math.floor(Math.random() * artistIDs.length)
-
-      const curArtistName = artistIDs[randomLine].name;
-      const curArtistID = artistIDs[randomLine].id;
-      
-      const artworkResponse = await fetch(
-        `https://api.artsy.net/api/artworks?page=1&size=100&artist_id=${curArtistID}`,
-        { headers: { 'X-Xapp-Token': xappToken } }
-      );
-      const artworkData = await artworkResponse.json();
-      const artworks = artworkData?._embedded?.artworks || [];
-
-      if (artworks.length > 0) {
-        const randomIndex = Math.floor(Math.random() * artworks.length);
-        const artwork = artworks[randomIndex];
-
-        const imageUrl = artwork._links?.image?.href?.replace('{image_version}', 'normalized');
-
+      if (recommendations.length > 0) {
+        const randomChoice = Math.random();
+        if (randomChoice < 0.4) { // 40% chance to select from saved artists
+          const savedArtists = await fetch("http://localhost:5050/record");
+          const savedLikes = await savedArtists.json();
+          const savedArtist = savedLikes[Math.floor(Math.random() * savedLikes.length)].artist;
+          
+          const numPaintings = artistIDs[savedArtist].length;
+          const randomArtwork = Math.floor(Math.random() * numPaintings);
+          const artworkName = artistIDs[savedArtist][randomArtwork].Artwork;
+          const artworkURL = artistIDs[savedArtist][randomArtwork].URL;
+          
+          setPaintingData({
+            url: artworkURL || "",
+            title: artworkName || "Untitled",
+            artist: savedArtist || "Unknown Artist",
+            liked: false,
+          });
+          console.log('Select from liked artists', savedLikes);
+        } else if (randomChoice < 0.8) { // 40% chance to select from top 5 recommended artists
+          const recommendedArtist = recommendations[Math.floor(Math.random() * Math.min(5, recommendations.length))];
+          
+          if (artistIDs[recommendedArtist]) {
+            const numPaintings = artistIDs[recommendedArtist].length;
+            const randomArtwork = Math.floor(Math.random() * numPaintings);
+            const artworkName = artistIDs[recommendedArtist][randomArtwork].Artwork;
+            const artworkURL = artistIDs[recommendedArtist][randomArtwork].URL;
+            
+            setPaintingData({
+              url: artworkURL || "",
+              title: artworkName || "Untitled",
+              artist: recommendedArtist || "Unknown Artist",
+              liked: false,
+            });
+            console.log('Select from a top 5 recommendation', recommendations);
+          } 
+        } else { // 20% chance: Random artist
+          const numArtists = Object.keys(artistIDs).length;
+          const randomLine = Math.floor(Math.random() * numArtists);
+          const curArtist = Object.keys(artistIDs)[randomLine];
+          const numPaintings = artistIDs[curArtist].length;
+          const randomArtwork = Math.floor(Math.random() * numPaintings);
+          const artworkName = artistIDs[curArtist][randomArtwork].Artwork;
+          const artworkURL = artistIDs[curArtist][randomArtwork].URL;
+          
+          setPaintingData({
+            url: artworkURL || "",
+            title: artworkName || "Untitled",
+            artist: curArtist || "Unknown Artist",
+            liked: false,
+          });
+          console.log('Select a random artist');
+        }
+      } else { // No recommendations
+        const numArtists = Object.keys(artistIDs).length;
+        const randomLine = Math.floor(Math.random() * numArtists);
+        const curArtist = Object.keys(artistIDs)[randomLine];
+        const numPaintings = artistIDs[curArtist].length;
+        const randomArtwork = Math.floor(Math.random() * numPaintings);
+        const artworkName = artistIDs[curArtist][randomArtwork].Artwork;
+        const artworkURL = artistIDs[curArtist][randomArtwork].URL;
+        
         setPaintingData({
-          url: imageUrl || "",
-          title: artwork.title || "Untitled",
-          artist: artwork.artist_names || curArtistName || "Unknown Artist",
+          url: artworkURL || "",
+          title: artworkName || "Untitled",
+          artist: curArtist || "Unknown Artist",
           liked: false,
         });
+        console.log('Select a random artist');
       }
     } catch (error) {
       console.error("Error fetching artwork:", error);
     }
-  }, [xappToken, artistIDs]);
+  }, [artistIDs, recommendations]);
 
-  const debouncedGeneratePainting = useCallback(debounce(generatePainting, 300), [generatePainting]);
+  const debouncedGeneratePainting = useCallback(
+    debounce(generatePainting, 300),
+    [generatePainting]
+  );
 
   const likePainting = useCallback(async () => {
     const newLikedState = !paintingData.liked;
@@ -138,26 +199,23 @@ function PaintingGenerator() {
       }
       
       const savedPainting = await response.json();
+      checkForRecommendations();
       console.log("Painting deleted:", savedPainting);
     }
   }, [paintingData]);
+
+  useEffect(() => {
+    if (Object.keys(artistIDs).length > 0 && recommendations.length === 0) {
+      checkForRecommendations();
+    }
+  }, [artistIDs, recommendations]);
   
 
   useEffect(() => {
-    const newPainting = {
-      url: paintingData.url,
-      title: paintingData.title,
-      artist: paintingData.artist,
-      liked: paintingData.liked
-    };
-    setPaintingData(newPainting);
-  }, [paintingData.url, paintingData.title, paintingData.artist, paintingData.liked]);
-
-  useEffect(() => {
-    if (xappToken && artistIDs.length > 0 && !paintingData.url) {
+    if (Object.keys(artistIDs).length > 0 && paintingData.url === "") {
       generatePainting();
     }
-  }, [xappToken, artistIDs, paintingData.url, generatePainting]);
+  }, [artistIDs, paintingData.url]);
 
   return (
     <div className='paintingContainer'>

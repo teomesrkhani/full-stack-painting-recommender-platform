@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
 import '../styles/saved_paintings.css';
 
 function savedPaintings(){
     return (
-        <div class="saved-paintings">
+        <div class="saved_paintings">
         Saved Paintings
         </div>
     );

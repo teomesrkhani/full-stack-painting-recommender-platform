@@ -1,3 +1,4 @@
+// db/connection.js
 import { MongoClient, ServerApiVersion } from "mongodb";
 
 const uri = process.env.ATLAS_URI || "";
@@ -6,19 +7,20 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  },
+  }
 });
 
-try {
-  // Connect the client to the server
-  await client.connect();
-  // Send a ping to confirm a successful connection
-  await client.db("admin").command({ ping: 1 });
-  console.log(
-   "Pinged your deployment. You successfully connected to MongoDB!"
-  );
-} catch(err) {
-  console.error(err);
+// Modified connection handler
+export async function connectToDB() {
+  try {
+    await client.connect();
+    await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. Successfully connected to MongoDB!");
+    return client.db("paintings");
+  } catch(err) {
+    console.error("Connection error:", err);
+    throw err;
+  }
 }
 
 let db = client.db("paintings");
