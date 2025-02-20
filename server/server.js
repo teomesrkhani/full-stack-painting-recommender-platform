@@ -22,7 +22,7 @@ app.post('/recommend', (req, res) => {
     'recommend/recommend.py',
     '--artists', artists.join(','),
     '--weights', counts.join(','),
-    '--model', '/Users/teomesrkhani/full-stack-painting-recommender-platform/server/recommend/artist_recommender.pt'
+    '--model', 'recommend/artist_recommender.pt'
   ]);
   
   let recommendations = '';
