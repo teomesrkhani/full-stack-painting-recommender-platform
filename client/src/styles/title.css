@@ -8,7 +8,10 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  background-color: transparent;
+  /* background-color: transparent; */
+  background-color: #ffffff;
+  border-color: #000000;
+  border-bottom: 0.5mm solid;
 }
 
 
@@ -36,17 +39,21 @@
   padding: 10px 15px;
   color: #333;
   text-decoration: none;
+  /*
   border: 2px solid black;
   border-radius: 10px;
+  */
+  display: flex;
+  align-items: center;
   background-color: transparent;
-  transition: all 0.3s ease;
+  transition: all 0.5s ease;
 
 }
 
 .nav-link:hover {
-  background-color: #333;
-  color: white;
-  border-color: #333;
+  border-color: #000000;
+  background-color: rgba(200,200,200, 0.2);
+  border-bottom: 0.5mm solid #000000;
 }
 
 .paint-brush {

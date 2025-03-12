@@ -3,9 +3,11 @@
   flex-direction: column;
   align-items: center;
   padding: 75px 0 0 0;
-  background: linear-gradient(-45deg, #ababab 0%, #dfdfdf 100%);
+  background: #f4f4f0;
   background-size: 500%;
+  /*background: linear-gradient(-45deg, #ababab 0%, #dfdfdf 100%);
   animation: bg-animation 15s infinite alternate;
+  */
 }
 
 .container {
@@ -15,8 +17,7 @@
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
   width: 90%;
-  height: 80%;
-  background-color: rgba(245, 245, 220, 0.364);
+  height: 100vw;
 }
 
 .profiles {

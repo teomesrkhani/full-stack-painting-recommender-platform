@@ -1,12 +1,18 @@
 .home {
     margin: 0;
     padding: 0;
+    background-color: #f4f4f0;
     height: 100vh;
-    color: #fcfcfc;
+    /*background-size: 500%;
+    
+    color: #f4f4f0;
+
+    /*
     background: linear-gradient(-45deg, #ababab 0%, #dfdfdf 100%);
-    background-size: 500%;
     animation: bg-animation 15s infinite alternate;
+    */
     justify-content: center;
     text-align: center;
+    background: linear-gradient(#000, #000) no-repeat center/0.5px 100%, #f4f4f0;
+
 }
-  
