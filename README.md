@@ -1,5 +1,5 @@
 # Full Stack Art Recommender Platform
-MERN stack + PyTorch-based recommender system for paintings using the Artsy API.
+MERN stack + PyTorch-based recommender system for paintings using the WikiArt API.
 
 ## Running Locally:
 To run the program locally, follow the steps below:
