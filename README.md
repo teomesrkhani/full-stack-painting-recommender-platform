@@ -4,39 +4,48 @@ MERN stack + PyTorch-based recommender system for paintings using the WikiArt AP
 ## Running Locally:
 To run the program locally, follow the steps below:
 
-1. Clone this repository:
+## Tech Stack
+
+- Frontend: React
+- Backend: Node.js, Express, Python, PyTorch
+- Database: MongoDB
+
+## Prerequisites
+
+- Node.js (v14 or later)
+- Python (v3.7 or later)
+- [MongoDB Altas account](https://www.mongodb.com/docs/atlas/getting-started/ 'Link title')
+
+## Running Locally
+
+1. Clone the repository:
 ```
 git clone https://github.com/teomesrkhani/full-stack-painting-recommender-platform
 ```
 
-2. Navigate into the server directory:
+2. Install dependencies:
+```
+(cd client && npm install) && (cd server && npm install)
+```
+
+3. Navigate to the `server` directory:
 ```
 cd server
 ```
 
-3. Install server dependencies:
+4. Open the `config.env` file and add your own MongoDB Atlas URI, replacing the placeholder values with your actual connection details:
 ```
-npm install
-```
-
-4. Run the MongoDB Backend:
-```
-node --env-file=config.env server 
+ATLAS_URI=mongodb+srv://<username>:<password>@<cluster>.<projectId>.mongodb.net/employees?retryWrites=true&w=majority
 ```
 
-5. Open a new terminal window and navigate to the client directory:
+5. Run the server
 ```
-cd ../client
-```
-
-6. Install client dependencies:
-```
-npm install
+npm run server
 ```
 
-7. Run client server:
+6. Open a new terminal window, navigate to the client directory and run client server:
 ```
-npm run start
+cd ../client && npm run start
 ```
 
-8. Open your browser and go to http://localhost:5173 to view the application.
+7. Open your browser and go to http://localhost:5173 to view the application.
