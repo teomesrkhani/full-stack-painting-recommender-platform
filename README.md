@@ -45,7 +45,7 @@ npm run server
 
 6. Open a new terminal window, navigate to the client directory and run client server:
 ```
-cd ../client && npm run start
+cd client && npm run start
 ```
 
 7. Open your browser and go to http://localhost:5173 to view the application.
