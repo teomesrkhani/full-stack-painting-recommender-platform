@@ -1,15 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/Title.css';
-import { FaPaintBrush } from 'react-icons/fa';
 
 function Title({ currentPage }) {
     return (
         <div className="title-container">
-            {currentPage === "home" ? (
+            {currentPage === "recommend-painting" ? (
                 <div className="title">
                 <Link className="title" to="/"> 
-                    Painting Recommender <FaPaintBrush className="paint-brush" />
+                    Painting Recommender <div className="paint-brush">🎨</div>
                 </Link>
             </div>
             ) : (

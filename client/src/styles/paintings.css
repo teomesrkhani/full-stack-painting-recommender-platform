@@ -8,16 +8,24 @@
 
 .paintingContainer {
     position: fixed;
-    top: 50%;
-    left: 25%;
+    top: 55%;
+    left: 50%;
     transform: translate(-50%, -50%);
-    width: 90vw;
-    max-width: 800px;
-    height: 80vh;
+    width: 80%;
+    max-width: 1000px;
+    /*
+    height: 600px;
     max-height: 600px;
+    */
+    height: 65%;
+    max-height: 65%;
     border: 0.0px solid #333;
     border-radius: 10px;
+    /*
     background-color: #f5f5f5;
+    
+    */
+    background-color: #e5e5e1;
     box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
     overflow: hidden;
 }
@@ -30,8 +38,9 @@
     justify-content: flex-end;
     padding: 20px;
     box-sizing: border-box;
-    /* background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%); */
-    background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%);
+    /*
+    background: rgba(0,0,0,0.4) 0%,;
+    */
     color: white;
 }
 
@@ -80,6 +89,13 @@
     color: #ff6b81;
 }
 
+.next-test {
+    color: rgb(100, 61, 155);
+    transform: scale(14);
+}
+.like-test {
+    color: rgb(100, 61, 155);
+}
 
 h2 {
     margin: 0;
@@ -91,4 +107,91 @@ p {
     margin: 5px 0 0;
     font-size: 1rem;
     opacity: 0.8;
+}
+
+.paintings-container {
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8f8f8 0%, #ffffff 100%);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.paintings-header {
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.paintings-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.5rem;
+  color: #2D3250;
+  margin-bottom: 1rem;
+}
+
+.paintings-subtitle {
+  font-size: 1.1rem;
+  color: #7077A1;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.paintings-content {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.paintings-stats {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2D3250;
+  font-family: 'Playfair Display', serif;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #7077A1;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 768px) {
+  .paintings-container {
+    padding: 1rem;
+  }
+  
+  .paintings-title {
+    font-size: 2rem;
+  }
+  
+  .paintings-subtitle {
+    font-size: 1rem;
+  }
+  
+  .paintings-stats {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
 }

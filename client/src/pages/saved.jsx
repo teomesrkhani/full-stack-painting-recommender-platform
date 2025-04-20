@@ -59,7 +59,12 @@ function Saved() {
   return (
     <div className="saved_paintings">
       <Title />
+      {recordList().length > 0 ? 
       <div className="container">{recordList()}</div>
+      :
+      <div className="error-text">No Saved Paintings to Show</div>
+      }
+      
       <Footer />
     </div>
   );
