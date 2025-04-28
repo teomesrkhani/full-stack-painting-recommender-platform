@@ -7,7 +7,6 @@
   top: 0;
   left: 0;
   right: 0;
-  /* background-color: transparent; */
   background-color: #ffffff;
   border-color: #000000;
   border-bottom: 0.5mm solid;
@@ -38,10 +37,6 @@
   padding: 10px 15px;
   color: #333;
   text-decoration: none;
-  /*
-  border: 2px solid black;
-  border-radius: 10px;
-  */
   display: flex;
   align-items: center;
   background-color: transparent;

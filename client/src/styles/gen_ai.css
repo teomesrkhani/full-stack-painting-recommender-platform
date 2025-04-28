@@ -1,0 +1,16 @@
+.error-text {
+    color: #e6f1ff;
+    font-size: 2rem;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+    height: calc(100% - 55px);
+    width: 100%;  
+  }
+
+  .gen_ai {
+    background-color: #0a192f;
+    background-image:
+        linear-gradient(rgba(64, 224, 208, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(64, 224, 208, 0.03) 1px, transparent 1px);
+  }

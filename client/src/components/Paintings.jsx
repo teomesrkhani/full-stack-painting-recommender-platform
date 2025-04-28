@@ -8,7 +8,6 @@ const PaintingInfo = memo(({ url, title, artist }) => (
   <div className='paintingInfo'>
     <img className='paintingImg' src={url} alt={title} loading="lazy" />
     <h2>{title}</h2>
-    <p>By {artist}</p>
   </div>
 ));
 
@@ -152,6 +151,8 @@ function PaintingGenerator() {
     } catch (error) {
       console.error("Error fetching artwork:", error);
     }
+    console.log('Painting generated');
+    console.log(paintingData);
   }, [artistIDs, recommendations]);
 
   const debouncedGeneratePainting = useCallback(
@@ -219,15 +220,6 @@ function PaintingGenerator() {
 
   return (
     <div className='paintingContainer'>
-      <button className='action next' onClick={debouncedGeneratePainting}>
-        <FaChevronLeft />
-      </button>
-      <button
-        className={`action like ${paintingData.liked ? 'liked' : ''}`}
-        onClick={likePainting}
-      >
-        <FaHeart />
-      </button>
       {paintingData.url ? (
         <PaintingInfo
           url={paintingData.url}
@@ -235,8 +227,20 @@ function PaintingGenerator() {
           artist={paintingData.artist}
         />
       ) : (
-        <p>Loading...</p>
+        <></>
       )}
+      <div className="actions-container">
+        <button className='action next' onClick={debouncedGeneratePainting}>
+          Next
+        </button>
+        
+        <button
+          className={`action like ${paintingData.liked ? 'liked' : ''}`}
+          onClick={likePainting}
+        >
+          {paintingData.liked ? 'Unlike' : 'Like'}
+        </button>
+      </div>
     </div>
   );
 }

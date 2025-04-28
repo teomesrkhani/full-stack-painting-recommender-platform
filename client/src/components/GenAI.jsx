@@ -1,10 +1,10 @@
-import '../styles/saved_paintings.css';
+import '../styles/gen_ai.css';
 
 function PaintingRecommender(){
-    console.log('painitng');
+    console.log('Gen AI');
     return (
-        <div class="saved_paintings">
-        Saved Paintings
+        <div class="error-text">
+        Please like a painting first to use this feature.
         </div>
     );
 }

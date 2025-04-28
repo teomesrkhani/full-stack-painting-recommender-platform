@@ -1,36 +1,75 @@
 .art-app {
-    font-size: 1rem;
-    max-width: 60%;
-    margin: 70px auto;
-    padding: 20px;
-    max-height: 10%;
-  }
-  
-  .tab-container {
-    font-size: 1rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #000;
     display: flex;
-    border-bottom: 1px solid #ccc;
-    max-height: 10%;
-  }
-  
-  .tab {
-    align-items: center;
-    font-size: 1rem;
-    padding: 10px 20px;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.tab-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    display: flex;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 10px;
+    justify-content: center;
+    gap: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab {
+    padding: 8px 16px;
     cursor: pointer;
     background: none;
     border: none;
     outline: none;
-    max-height: 10%;
-  }
-  
-  .tab.active-tab {
-    border-bottom: 2px solid #007bff;
-    color: #007bff;
-    max-height: 10%;
-  }
-  
-  .content-container {
-    margin-top: 20px;
-  }
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 300;
+}
+
+.tab:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.tab.active-tab {
+    color: white;
+    font-weight: 500;
+}
+
+.saved-link {
+    padding: 8px 16px;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 300;
+    margin-right: 20px;
+}
+
+.saved-link:hover {
+    color: white;
+}
+
+.content-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 60px;
+    z-index: 1;
+}
   

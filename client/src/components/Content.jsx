@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import PaintingGenerator from './Paintings';
 import PaintingRecommender from './GenAI';
+import SavedPaintings from './SavedPaintings';
+import { Link } from 'react-router-dom';
 import '../styles/content.css';
 
 function Content() {
@@ -24,11 +26,18 @@ function Content() {
         >
           Painting Generator
         </button>
+        <button 
+          className={toggleState === 3 ? "tab active-tab" : "tab"}
+          onClick={() => toggleTab(3)}
+        >
+          Liked Paintings
+        </button>
       </div>
 
       <div className="content-container">
         {toggleState === 1 && <PaintingGenerator />}
         {toggleState === 2 && <PaintingRecommender />}
+        {toggleState === 3 && <SavedPaintings />}
       </div>
     </div>
   );

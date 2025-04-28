@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, BrowserRouter } from "react-rou
 import './styles/app.css';
 
 import Home from './pages/home';
-import Saved from './pages/saved';
+import SavedPaintings from './components/SavedPaintings';
 
 function App() {
   return (
@@ -11,7 +11,7 @@ function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home/>} />
-          <Route path="/saved" element={<Saved />} />
+          <Route path="/saved" element={<SavedPaintings />} />
         </Routes>
       </main>
     </BrowserRouter>
