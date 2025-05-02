@@ -3,10 +3,6 @@ import { FaTrash } from 'react-icons/fa';
 import '../styles/saved_paintings.css';
 import '../styles/home.css';
 
-// Components
-import Footer from '../components/Footer';
-import Title from '../components/Title';
-
 
 const PaintingProfile = (props) => (
   <div className="profiles">

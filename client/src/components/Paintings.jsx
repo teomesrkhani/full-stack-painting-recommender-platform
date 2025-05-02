@@ -151,8 +151,6 @@ function PaintingGenerator() {
     } catch (error) {
       console.error("Error fetching artwork:", error);
     }
-    console.log('Painting generated');
-    console.log(paintingData);
   }, [artistIDs, recommendations]);
 
   const debouncedGeneratePainting = useCallback(

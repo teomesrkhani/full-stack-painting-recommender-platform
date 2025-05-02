@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import PaintingGenerator from './Paintings';
 import PaintingRecommender from './GenAI';
 import SavedPaintings from './SavedPaintings';
-import { Link } from 'react-router-dom';
 import '../styles/content.css';
 
 function Content() {
@@ -20,10 +19,7 @@ const toggleTab = async (tab) => {
   if (tab === 2 || tab === 3) {
     await checkHasRecords();
   }
-  console.log('hasRecords', hasRecords);
-  console.log('toggleState', toggleState);
   setToggleState(tab);
-  console.log('toggleState', toggleState);
 };
 
 
