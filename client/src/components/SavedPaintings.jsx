@@ -50,27 +50,20 @@ function SavedPaintings() {
     setRecords(newRecords);
   }
 
-  function recordList() {
-    return records.map((record) => (
-      <PaintingProfile
-        record={record}
-        deleteRecord={deleteRecord}
-        key={record._id}
-      />
-    ));
-  }
-
-  const hasRecords = recordList().length > 0;
-
   return (
     <div className="saved_paintings">
-      {hasRecords ?
-      <div className="container">{recordList()}</div>
-      :
-      <div className="error-text">No Liked Paintings to Show</div>
-      }
+      <div className="container">
+        {records.map((record) => (
+          <PaintingProfile
+            record={record}
+            deleteRecord={deleteRecord}
+            key={record._id}
+          />
+        ))}
+      </div>
     </div>
   );
+
 }
 
 export default SavedPaintings;
