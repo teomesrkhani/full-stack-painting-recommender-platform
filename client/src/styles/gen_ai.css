@@ -1,35 +1,259 @@
 .error-text {
-    color: #e6f1ff;
-    font-size: 2rem;
-    justify-content: center;
-    display: flex;
-    align-items: center;
-    height: calc(100% - 55px);
-    width: 100%;  
-  }
-  .saved_paintings::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image:
-        linear-gradient(rgba(64, 224, 208, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(64, 224, 208, 0.03) 1px, transparent 1px);
-    background-size: 20px 20px;
-    pointer-events: none;
-  }
+  color: #e6f1ff;
+  font-size: 2rem;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  height: calc(100% - 55px);
+  width: 100%;  
+}
 
-  h1 {
-    color: #e6f1ff;
-    font-size: 2rem;
-  }
+.gen-ai-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  padding: 20px 40px;
+  gap: 60px;
+  color: #e6f1ff;
+  background-color: #0a192f;
+  background-image:
+      linear-gradient(rgba(64, 224, 208, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(64, 224, 208, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  overflow-y: auto;
+  margin-bottom: 0px;
+}
+
+.input-section {
+  flex: 0.8;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-height: calc(100vh - 200px);
+  align-items: center;
+  padding: 0 20px;
+}
+
+.painting-display {
+  flex: 1.2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  background-color: rgba(64, 224, 208, 0.05);
+  min-height: 500px;
+  max-height: calc(100vh - 200px);
+  overflow: hidden;
+  position: relative;
+  margin-right: 20px;
+  padding: 20px;
+}
+
+.prompt-input {
+  width: 80%;
+  max-width: 500px;
+  font-size: 18px;
+  padding: 15px;
+  border-radius: 8px;
+  resize: none;
+  border: 1px solid #64ffda;
+  background-color: rgba(10, 25, 47, 0.8);
+  color: #e6f1ff;
+  outline: none;
+  font-family: inherit;
+  margin: 0 auto;
+}
+
+.prompt-input:focus {
+  box-shadow: 0 0 0 2px rgba(100, 255, 218, 0.3);
+}
+
+.generate-button {
+  background-color: #64ffda;
+  color: #0a192f;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 20px;
+  position: relative;
+  z-index: 10;
+  margin-bottom: 30px;
+  width: 200px;
+}
+
+.generate-button:hover {
+  background-color: #4cded9;
+}
+
+.generate-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.generated-painting {
+  max-width: 100%;
+  max-height: 100%;
+  width: 1024px;
+  height: 1024px;
+  object-fit: contain;
+}
+
+.placeholder-display {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  color: #64ffda;
+  opacity: 0.7;
+  font-size: 18px;
+  text-align: center;
+}
+
+.placeholder-size {
+  font-size: 14px;
+  margin-top: 10px;
+  opacity: 0.6;
+}
+
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #64ffda;
+  font-size: 20px;
+  text-align: center;
+  gap: 20px;
+}
 
 
-  .gen_ai {
-    background-color: #0a192f;
-    background-image:
-        linear-gradient(rgba(64, 224, 208, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(64, 224, 208, 0.03) 1px, transparent 1px);
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(100, 255, 218, 0.2);
+  border-radius: 50%;
+  border-top-color: #64ffda;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
+}
+
+.saved_paintings::before {
+  content: none;
+}
+
+h1 {
+  color: #e6f1ff;
+  font-size: 2rem;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.description-text {
+  text-align: center;
+  color: #e6f1ff;
+  margin-bottom: 20px;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+.text_box {
+  position: relative;
+  top: 100px;
+  left: -300px;
+}
+
+.painting_area {
+  position: relative;
+  top: 00px;
+  left: 300px;
+}
+
+@media (max-width: 768px) {
+  .gen-ai-container {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .painting-display {
+    min-height: 300px;
+  }
+  
+  .prompt-input {
+    width: 90%;
+  }
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background-color: rgba(64, 224, 208, 0.05);
+}
+
+.radio-label:hover {
+  background-color: rgba(64, 224, 208, 0.1);
+}
+
+.radio-label input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #64ffda;
+  border-radius: 50%;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.radio-label input[type="radio"]:checked {
+  background-color: #64ffda;
+  box-shadow: 0 0 0 2px rgba(100, 255, 218, 0.3);
+}
+
+.radio-label input[type="radio"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background-color: #0a192f;
+  border-radius: 50%;
+}
+
+.radio-text {
+  color: #e6f1ff;
+  font-size: 16px;
+  font-weight: 500;
+}
