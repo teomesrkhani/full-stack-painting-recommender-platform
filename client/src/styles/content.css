@@ -49,6 +49,18 @@
     font-weight: 500;
 }
 
+.content-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 60px;
+    z-index: 1;
+}
+
+.error-text {
+    color: white;
+}
+
 .saved-link {
     padding: 8px 16px;
     color: rgba(255, 255, 255, 0.7);
@@ -63,13 +75,5 @@
 
 .saved-link:hover {
     color: white;
-}
-
-.content-container {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 60px;
-    z-index: 1;
 }
   
