@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import { debounce, random } from 'lodash';
-import { FaChevronLeft, FaHeart } from 'react-icons/fa';
+import { debounce } from 'lodash';
 import '../styles/paintings.css';
-import '../styles/title.css';
 
 const PaintingInfo = memo(({ url, title, artist }) => (
   <div className='paintingInfo'>
