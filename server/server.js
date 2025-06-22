@@ -14,42 +14,87 @@ app.use(express.json());
 // Routes
 app.use("/record", records);
 
-// Recommendation endpoint
+// Start persistent Python recommendation service
+let recommendationService = null;
+let isServiceReady = false;
+
+function startRecommendationService() {
+  console.log('Starting persistent recommendation service...');
+  recommendationService = spawn('python3.10', [
+    'recommend/recommendation_service.py',
+    'recommend/artist_recommender.pt'
+  ], {
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+
+  recommendationService.stderr.on('data', (data) => {
+    const message = data.toString();
+    console.log(`Recommendation service: ${message.trim()}`);
+    if (message.includes('Ready for requests')) {
+      isServiceReady = true;
+    }
+  });
+
+  recommendationService.on('close', (code) => {
+    console.log(`Recommendation service exited with code ${code}`);
+    isServiceReady = false;
+    setTimeout(() => {
+      if (!isServiceReady) {
+        startRecommendationService();
+      }
+    }, 2000);
+  });
+}
+
+// Start the service
+startRecommendationService();
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('Shutting down...');
+  if (recommendationService) {
+    recommendationService.kill();
+  }
+  process.exit(0);
+});
+
+// Recommendation endpoint with persistent service
 app.post('/recommend', (req, res) => {
   const { artists, counts } = req.body;
   
-  const pythonProcess = spawn('python3.10', [
-    'recommend/recommend.py',
-    '--artists', artists.join(','),
-    '--weights', counts.join(','),
-    '--model', 'recommend/artist_recommender.pt'
-  ]);
+  if (!isServiceReady) {
+    return res.status(503).json({ error: 'Recommendation service not ready' });
+  }
   
-  let recommendations = '';
-  let error = '';
+  const request = JSON.stringify({ artists, counts });
+  let responseData = '';
   
-  pythonProcess.stdout.on('data', (data) => {
-    recommendations += data.toString();
-  });
-
-  pythonProcess.stderr.on('data', (data) => {
-    error += data.toString();
-    console.error(`Python error: ${data}`);
-  });
-
-  pythonProcess.on('close', (code) => {
-    if(code !== 0 || error) {
-      console.error('Recommendation failed with error:', error);
-      return res.status(500).json({ error: 'Recommendation failed' });
-    }
+  const timeout = setTimeout(() => {
+    res.status(500).json({ error: 'Recommendation timeout' });
+  }, 5000);
+  
+  // Set up response handler
+  const responseHandler = (data) => {
+    responseData += data.toString();
     
     try {
-      res.json(JSON.parse(recommendations));
-    } catch(e) {
-      console.error(e);
-      res.status(500).json({ error: 'Invalid recommendation output' });
+      const response = JSON.parse(responseData);
+      clearTimeout(timeout);
+      recommendationService.stdout.removeListener('data', responseHandler);
+      
+      if (response.error) {
+        res.status(500).json({ error: response.error });
+      } else {
+        res.json(response);
+      }
+    } catch (e) {
+      console.log(e);
     }
-  });
+  };
+  
+  recommendationService.stdout.on('data', responseHandler);
+  
+  recommendationService.stdin.write(request + '\n');
 });
 
 
