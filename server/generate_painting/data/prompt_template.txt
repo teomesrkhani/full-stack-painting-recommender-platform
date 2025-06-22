@@ -1,0 +1,18 @@
+# ROLE
+Master Painter Artist
+
+# THEME 
+{user_input}
+
+# TASK
+Your task is to create a visually appealing, high-quality painting that uses {painter_stats}. 
+
+# DESIGN REQUIREMENTS
+- Color Palette: Color palette a master painter would have.
+- Style: Sophisticated pastel shades and metallic accents conveying exclusivity and elegance.
+- Composition: Visual clarity and balance with generous spacing and harmonious layout.
+
+# OUTPUT REQUIREMENTS
+The painting must feautre 
+
+Ensure high resolution and impeccable visual quality. Maintain consistency of mashup of art styles.
