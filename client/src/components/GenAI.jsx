@@ -1,136 +1,152 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import '../styles/gen_ai.css';
+import { getUniqueLikedArtistsWithCounts } from '../utils/db';
 
-function PaintingRecommender() {
+const BACKEND_URL = 'http://localhost:5001';
+
+function GenAIPaintingGenerator() { // Ensure component name is consistent if renamed
   const [prompt, setPrompt] = useState('');
   const [paintingUrl, setPaintingUrl] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [toggleState, setToggleState] = useState(2); // Default to "Generate your own prompt"
-  const [remainingCredits, setRemainingCredits] = useState(10);
-  
-  const decrementCredits = () => {
-    setRemainingCredits(remainingCredits => remainingCredits - 1);
-  };
+  const [generationMode, setGenerationMode] = useState(2); // 1: Liked, 2: Own Prompt, 3: AI for Prompt
+  const [availableLikedArtists, setAvailableLikedArtists] = useState([]);
+  const [isLoadingLikedArtists, setIsLoadingLikedArtists] = useState(false);
 
-  const generatePainting = async () => {
-    setIsGenerating(true);
-    
-    try {
-      const response = await fetch('http://localhost:5051/generate-painting', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate painting');
+  useEffect(() => {
+    const fetchArtistsForMode = async () => {
+      if (generationMode === 1) {
+        setIsLoadingLikedArtists(true);
+        try {
+          const { artists } = await getUniqueLikedArtistsWithCounts();
+          setAvailableLikedArtists(artists);
+          if (artists.length > 0) {
+            setPrompt(`Generate a painting inspired by styles similar to ${artists.slice(0, 3).join(', ')}...`);
+          } else {
+            setPrompt('No liked artists found. Please like some paintings first to use this mode.');
+          }
+        } catch (error) {
+          console.error("Error fetching liked artists for GenAI:", error);
+          setPrompt('Could not load your liked artists. Please try refreshing.');
+          setAvailableLikedArtists([]);
+        } finally {
+          setIsLoadingLikedArtists(false);
+        }
       }
+    };
+    fetchArtistsForMode();
+  }, [generationMode]);
 
+  const handlePaintingGeneration = async () => {
+    let finalPrompt = prompt;
+    if (generationMode === 1) {
+      if (availableLikedArtists.length === 0) return alert("No liked artists available for this mode.");
+      // Prompt is already set or can be edited by user
+    } else if (generationMode === 3) {
+      alert("'AI Write Prompt For Me' is a placeholder. Using current text.");
+      // Future: call LLM to generate prompt based on some input, then set finalPrompt
+    }
+    if (!finalPrompt || !finalPrompt.trim()) return alert("Please provide a prompt.");
+
+    setIsGenerating(true);
+    if (paintingUrl) URL.revokeObjectURL(paintingUrl); 
+    setPaintingUrl(null);
+    try {
+      const response = await fetch(`${BACKEND_URL}/generate-painting`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: finalPrompt }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to generate painting: ${response.status} - ${errorText}`);
+      }
       const imageBlob = await response.blob();
-      const imageUrl = URL.createObjectURL(imageBlob);
-      setPaintingUrl(imageUrl);
+      const newImageUrl = URL.createObjectURL(imageBlob);
+      setPaintingUrl(newImageUrl);
     } catch (error) {
-      console.error('Error generating painting:', error);
+      console.error('Error during painting generation:', error);
+      alert(`Generation failed: ${error.message}`);
+      setPaintingUrl(null);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const toggleTab = (tab) => {
-    setToggleState(tab);
-    setPrompt(''); // Clear prompt when switching modes
-    setPaintingUrl(null); // Clear any existing painting
-  };
+
+  
+  useEffect(() => { // Cleanup object URL
+    return () => { if (paintingUrl) URL.revokeObjectURL(paintingUrl); };
+  }, [paintingUrl]);
 
   return (
     <div className="gen-ai-container">
       <div className="input-section">
-        {remainingCredits > 0 ? ( <>
-        <h1>Generate a Painting</h1>
-        
+        <h1>Generate a Painting (AI)</h1>
         <div className="radio-group">
           <label className="radio-label">
             <input 
               type="radio" 
-              name="tab" 
-              checked={toggleState === 1} 
-              onChange={() => toggleTab(1)} 
+              name="genMode" 
+              value={1} 
+              checked={generationMode === 1}
+              onChange={(e) => setGenerationMode(parseInt(e.target.value))}
             />
-            <span className="radio-text">Use My Liked Artists</span>
+            <span className="radio-text">Based on My Liked Artists</span>
           </label>
-
           <label className="radio-label">
             <input 
               type="radio" 
-              name="tab" 
-              checked={toggleState === 2} 
-              onChange={() => toggleTab(2)} 
+              name="genMode" 
+              value={2} 
+              checked={generationMode === 2}
+              onChange={(e) => setGenerationMode(parseInt(e.target.value))}
             />
             <span className="radio-text">Write My Own Prompt</span>
           </label>
-
           <label className="radio-label">
             <input 
               type="radio" 
-              name="tab" 
-              checked={toggleState === 3} 
-              onChange={() => toggleTab(3)} 
+              name="genMode" 
+              value={3} 
+              checked={generationMode === 3}
+              onChange={(e) => setGenerationMode(parseInt(e.target.value))}
             />
             <span className="radio-text">AI Write Prompt For Me</span>
           </label>
         </div>
-          </> ) : (
-            <h1>You have no credits remaining.</h1>
-            )}
-        
         <textarea
           className="prompt-input"
           placeholder={
-            toggleState === 1 
-              ? 'Textbox is disabled. Click "Generate Painting" to see... '
-              : toggleState === 2 
-                ? "Describe what you want to see... (e.g., A landscape in the style of Monet with vibrant colors and water lilies)"
-                : "Upload a painting to generate a prompt..."
+            generationMode === 1
+              ? (isLoadingLikedArtists ? "Loading liked artists..." : (availableLikedArtists.length > 0 ? prompt : "No liked artists found..."))
+              : generationMode === 2
+                ? "Describe the painting you want... (e.g., A serene lake at dawn in impressionist style)"
+                : "Describe the style or upload an image (AI prompt generation coming soon)..."
           }
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           rows={10}
-          disabled={toggleState === 1}
+          disabled={(generationMode === 1 && (isLoadingLikedArtists || availableLikedArtists.length === 0))}
         />
-        
-        <button 
+        <button
           className="generate-button"
-          //onClick={generatePainting && decrementCredits}
-          onClick={decrementCredits}
-          disabled={isGenerating || (toggleState === 2 && !prompt)}
+          onClick={handlePaintingGeneration}
+          disabled={isGenerating || (generationMode === 1 && (isLoadingLikedArtists || availableLikedArtists.length === 0))}
         >
           {isGenerating ? 'Generating...' : 'Generate Painting'}
         </button>
-        <div>{remainingCredits} Credits Remaining</div>
       </div>
-      
       <div className="painting-display">
         {isGenerating ? (
-          <div className="loading-indicator">
-            <p>Creating your painting...</p>
-            <div className="spinner"></div>
-          </div>
+          <div className="loading-indicator"><p>Creating your masterpiece...</p><div className="spinner"></div></div>
         ) : paintingUrl ? (
-          <img 
-            src={paintingUrl} 
-            alt="AI generated painting" 
-            className="generated-painting"
-          />
+          <img src={paintingUrl} alt="AI generated painting" className="generated-painting" />
         ) : (
-          <div className="placeholder-display">
-            <p>Your painting will appear here</p>
-          </div>
+          <div className="placeholder-display"><p>Your AI-generated painting will appear here</p></div>
         )}
       </div>
     </div>
   );
 }
 
-export default PaintingRecommender;
+export default GenAIPaintingGenerator;

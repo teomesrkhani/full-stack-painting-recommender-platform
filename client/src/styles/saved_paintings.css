@@ -33,12 +33,13 @@
   display: grid;
   padding-top: 20px;
   padding-bottom:30px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, 300px);
   gap: 20px;
   width: 90%;
   height: auto;
   z-index: 2;
   position: relative;
+  justify-content: center;
 }
 
 .profiles {

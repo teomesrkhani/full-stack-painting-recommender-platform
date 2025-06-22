@@ -1,13 +1,20 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { debounce } from 'lodash';
 import '../styles/paintings.css';
+import {
+  addLikedPainting,
+  removeLikedPaintingById,
+  getLikedPaintingByUrl,
+  getUniqueLikedArtistsWithCounts,
+  getRecommendedArtists
+} from '../utils/db';
 
-const PaintingInfo = memo(({ url, title, artist }) => (
+const PaintingInfo = ({ url, title, artist }) => (
   <div className='paintingInfo'>
     <img className='paintingImg' src={url} alt={title} loading="lazy" />
     <h2>{title}</h2>
   </div>
-));
+);
 
 function PaintingGenerator() {
   const [paintingData, setPaintingData] = useState({
@@ -17,202 +24,147 @@ function PaintingGenerator() {
     liked: false,
   });
 
-  const [artistIDs, setArtistIDs] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
-  const [recommendationGenerated, setRecommendationGenerated] = useState(false);
+  const [artistMasterList, setArtistMasterList] = useState({});
+  const [likedArtistPool, setLikedArtistPool] = useState({ artists: [], counts: [] });
 
-  const checkForRecommendations = async () => {
-    try {
-      const response = await fetch("http://localhost:5050/record");
-      const likes = await response.json();
-      console.log('likes', likes);
-      
-      if (likes.length > 0) {
-        const artistCountMap = new Map();
-  
-        likes.forEach(like => {
-          if (artistCountMap.has(like.artist)) {
-            artistCountMap.set(like.artist, artistCountMap.get(like.artist) + 1);
-          } else {
-            artistCountMap.set(like.artist, 1);
-          }
-        });
-        
-        const artists = Array.from(artistCountMap.keys());
-        const counts = Array.from(artistCountMap.values());
-        
-        const recResponse = await fetch("http://localhost:5050/recommend", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ artists, counts })
-        });
-        
-        const recs = await recResponse.json();
-        setRecommendations(recs);
-        setRecommendationGenerated(true);
-
-      }
-    } catch (error) {
-      setRecommendationGenerated(false);
-      console.error("Recommendation error:", error);
-    }
-  };
-
+  // Fetch the main artwork data from `final_out.json`
   useEffect(() => {
-    const fetchArtistIDs = async () => {
+    const fetchArtworkData = async () => {
       try {
-        const response = await fetch("/final_out.json");
-        const text = await response.json();
-        setArtistIDs(text);
-
+        const jsonUrl = `${import.meta.env.BASE_URL}final_out.json`;
+        const response = await fetch(jsonUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status} for ${jsonUrl}`);
+        }
+        const data = await response.json();
+        setArtistMasterList(data);
       } catch (err) {
-        console.error("Error loading artist IDs:", err);
+        console.error("Error loading artist master list:", err);
       }
     };
-    fetchArtistIDs();
+    fetchArtworkData();
   }, []);
 
-  const generatePainting = useCallback(async () => {
+  // Fetch liked artists from the database for the generator pool
+  const refreshLikedArtistPool = useCallback(async () => {
     try {
-      if (recommendations.length > 0) {
+      const details = await getUniqueLikedArtistsWithCounts();
+      setLikedArtistPool(details);
+    } catch (error) {
+      console.error("Error fetching liked artists for generator:", error);
+      setLikedArtistPool({ artists: [], counts: [] });
+    }
+  }, []);
+
+  // fetch liked artists pool after list is ready
+  useEffect(() => {
+    if (Object.keys(artistMasterList).length > 0) {
+      refreshLikedArtistPool();
+    }
+  }, [artistMasterList, refreshLikedArtistPool]);
+
+  const checkIfPaintingIsLiked = useCallback(async (url) => {
+    if (!url) return false;
+    try {
+      const likedPainting = await getLikedPaintingByUrl(url);
+      return !!likedPainting;
+    } catch (error) {
+      console.error("Error checking if painting is liked:", error);
+      return false;
+    }
+  }, []);
+
+  const generateNewPainting = useCallback(async () => {
+    if (Object.keys(artistMasterList).length === 0) {
+      return;
+    }
+    try {
+      let selectedArtistName = "";
+      const availableArtistsInMasterList = Object.keys(artistMasterList);
+      if (availableArtistsInMasterList.length === 0) {
+        setPaintingData({ url: "", title: "No artwork data found", artist: "", liked: false });
+        return;
+      }
+
+      if (likedArtistPool.artists.length > 0) {
         const randomChoice = Math.random();
-        if (randomChoice < 0.4) { // 40% chance to select from saved artists
-          const savedArtists = await fetch("http://localhost:5050/record");
-          const savedLikes = await savedArtists.json();
-          const savedArtist = savedLikes[Math.floor(Math.random() * savedLikes.length)].artist;
+        
+        if (randomChoice < 0.4) { // 40% chance to select from liked artists
+          selectedArtistName = likedArtistPool.artists[Math.floor(Math.random() * likedArtistPool.artists.length)];
+          console.log('Select from liked artists', likedArtistPool.artists);
           
-          const numPaintings = artistIDs[savedArtist].length;
-          const randomArtwork = Math.floor(Math.random() * numPaintings);
-          const artworkName = artistIDs[savedArtist][randomArtwork].Artwork;
-          const artworkURL = artistIDs[savedArtist][randomArtwork].URL;
-          
-          setPaintingData({
-            url: artworkURL || "",
-            title: artworkName || "Untitled",
-            artist: savedArtist || "Unknown Artist",
-            liked: false,
-          });
-          console.log('Select from liked artists', savedLikes);
-        } else if (randomChoice < 0.8) { // 40% chance to select from top 5 recommended artists
-          const recommendedArtist = recommendations[Math.floor(Math.random() * Math.min(5, recommendations.length))];
-          
-          if (artistIDs[recommendedArtist]) {
-            const numPaintings = artistIDs[recommendedArtist].length;
-            const randomArtwork = Math.floor(Math.random() * numPaintings);
-            const artworkName = artistIDs[recommendedArtist][randomArtwork].Artwork;
-            const artworkURL = artistIDs[recommendedArtist][randomArtwork].URL;
-            
-            setPaintingData({
-              url: artworkURL || "",
-              title: artworkName || "Untitled",
-              artist: recommendedArtist || "Unknown Artist",
-              liked: false,
-            });
-            console.log('Select from a top 5 recommendation', recommendations);
-          } 
+        } else if (randomChoice < 0.8) { // 40% chance to get a recommendation
+          const recommendedArtists = await getRecommendedArtists(likedArtistPool.artists, likedArtistPool.counts);
+          if (recommendedArtists.length > 0) {
+            const top5Recommended = recommendedArtists.slice(0, 5);
+            selectedArtistName = top5Recommended[Math.floor(Math.random() * top5Recommended.length)];
+            console.log('Selected from top 5 recommendations:', selectedArtistName);
+          } else {
+            selectedArtistName = availableArtistsInMasterList[Math.floor(Math.random() * availableArtistsInMasterList.length)];
+            console.log('Recommendation failed, selected random artist');
+          }
         } else { // 20% chance: Random artist
-          const numArtists = Object.keys(artistIDs).length;
-          const randomLine = Math.floor(Math.random() * numArtists);
-          const curArtist = Object.keys(artistIDs)[randomLine];
-          const numPaintings = artistIDs[curArtist].length;
-          const randomArtwork = Math.floor(Math.random() * numPaintings);
-          const artworkName = artistIDs[curArtist][randomArtwork].Artwork;
-          const artworkURL = artistIDs[curArtist][randomArtwork].URL;
-          
-          setPaintingData({
-            url: artworkURL || "",
-            title: artworkName || "Untitled",
-            artist: curArtist || "Unknown Artist",
-            liked: false,
-          });
+          selectedArtistName = availableArtistsInMasterList[Math.floor(Math.random() * availableArtistsInMasterList.length)];
           console.log('Select a random artist');
         }
-      } else { // No recommendations
-        const numArtists = Object.keys(artistIDs).length;
-        const randomLine = Math.floor(Math.random() * numArtists);
-        const curArtist = Object.keys(artistIDs)[randomLine];
-        const numPaintings = artistIDs[curArtist].length;
-        const randomArtwork = Math.floor(Math.random() * numPaintings);
-        const artworkName = artistIDs[curArtist][randomArtwork].Artwork;
-        const artworkURL = artistIDs[curArtist][randomArtwork].URL;
-        
+      } else { // No liked artists - select random
+        selectedArtistName = availableArtistsInMasterList[Math.floor(Math.random() * availableArtistsInMasterList.length)];
+        console.log('No liked artists - select random artist');
+      }
+
+      const artworksBySelectedArtist = artistMasterList[selectedArtistName];
+      if (artworksBySelectedArtist && artworksBySelectedArtist.length > 0) {
+        const randomArtwork = artworksBySelectedArtist[Math.floor(Math.random() * artworksBySelectedArtist.length)];
+        const isNowLiked = await checkIfPaintingIsLiked(randomArtwork.URL);
         setPaintingData({
-          url: artworkURL || "",
-          title: artworkName || "Untitled",
-          artist: curArtist || "Unknown Artist",
-          liked: false,
+          url: randomArtwork.URL || "",
+          title: randomArtwork.Artwork || "Untitled",
+          artist: selectedArtistName || "Unknown Artist",
+          liked: isNowLiked,
         });
-        console.log('Select a random artist');
+      } else {
+        // Fallback if error, try generating again
+        if(availableArtistsInMasterList.length > 0) generateNewPainting(); 
       }
     } catch (error) {
-      console.error("Error fetching artwork:", error);
+      console.error("Error in generateNewPainting:", error);
     }
-  }, [artistIDs, recommendations]);
+  }, [artistMasterList, likedArtistPool, checkIfPaintingIsLiked]);
 
-  const debouncedGeneratePainting = useCallback(
-    debounce(generatePainting, 300),
-    [generatePainting]
-  );
+  const debouncedGeneratePainting = useCallback(debounce(generateNewPainting, 300), [generateNewPainting]);
 
-  const likePainting = useCallback(async () => {
-    const newLikedState = !paintingData.liked;
+  // Like/Unlike Painting Logic
+  const toggleLikePainting = useCallback(async () => {
+    if (!paintingData.url) return;
+    const currentlyLiked = paintingData.liked;
+    const newLikedState = !currentlyLiked;
     setPaintingData(prev => ({ ...prev, liked: newLikedState }));
-  
-    if (newLikedState) {
-      const response = await fetch("http://localhost:5050/record", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          title: paintingData.title,
-          artist: paintingData.artist,
-          url: paintingData.url
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to save painting');
-      }
-      
-      const savedPainting = await response.json();
-      setPaintingData(prev => ({ ...prev, id: savedPainting.insertedId }));
-      console.log("Painting saved:", savedPainting);
-      
-    }
-    else {      
-      const response = await fetch(`http://localhost:5050/record/${paintingData.id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: paintingData.title,
-          artist: paintingData.artist,
+    try {
+      if (newLikedState) {
+        await addLikedPainting({
           url: paintingData.url,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete painting');
+          title: paintingData.title,
+          artist: paintingData.artist,
+        });
+      } else {
+        const likedPainting = await getLikedPaintingByUrl(paintingData.url);
+        if (likedPainting) {
+          await removeLikedPaintingById(likedPainting._id);
+        }
       }
-      
-      const savedPainting = await response.json();
-      checkForRecommendations();
-      console.log("Painting deleted:", savedPainting);
+      await refreshLikedArtistPool();
+    } catch (error) {
+      console.error("Error toggling like state:", error);
+      setPaintingData(prev => ({ ...prev, liked: currentlyLiked }));
     }
-  }, [paintingData]);
+  }, [paintingData, refreshLikedArtistPool]);
 
   useEffect(() => {
-    if (Object.keys(artistIDs).length > 0 && recommendations.length === 0) {
-      checkForRecommendations();
+    if (paintingData.url === "" && Object.keys(artistMasterList).length > 0) {
+      generateNewPainting();
     }
-  }, [artistIDs, recommendations]);
+  }, [paintingData.url, artistMasterList, generateNewPainting]);
   
-
-  useEffect(() => {
-    if (Object.keys(artistIDs).length > 0 && paintingData.url === "") {
-      generatePainting();
-    }
-  }, [artistIDs, paintingData.url]);
 
   return (
     <div className='paintingContainer'>
@@ -223,19 +175,20 @@ function PaintingGenerator() {
           artist={paintingData.artist}
         />
       ) : (
-        <></>
+        <div className="paintingInfo"><h2>&nbsp;</h2></div>
       )}
       <div className="actions-container">
         <button className='action next' onClick={debouncedGeneratePainting}>
           Next
         </button>
-        
-        <button
-          className={`action like ${paintingData.liked ? 'liked' : ''}`}
-          onClick={likePainting}
-        >
-          {paintingData.liked ? 'Unlike' : 'Like'}
-        </button>
+        {
+          <button
+            className={`action like ${paintingData.liked ? 'liked' : ''}`}
+            onClick={toggleLikePainting}
+          >
+            {paintingData.liked ? 'Unlike' : 'Like'}
+          </button>
+        }
       </div>
     </div>
   );

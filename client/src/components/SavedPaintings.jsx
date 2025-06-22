@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FaTrash } from 'react-icons/fa';
 import '../styles/saved_paintings.css';
 import '../styles/home.css';
-
+import { getAllLikedPaintings, removeLikedPaintingById } from '../utils/db';
 
 const PaintingProfile = (props) => (
   <div className="profiles">
@@ -25,26 +25,30 @@ function SavedPaintings() {
   const [records, setRecords] = useState([]);
 
   useEffect(() => {
-    async function getRecords() {
-      const response = await fetch('http://localhost:5050/record/');
-      if (!response.ok) {
-        const message = 'An error occurred:' + response.statusText;
-        window.alert(message);
-        return;
+    async function getRecordsFromDB() {
+      try {
+        const data = await getAllLikedPaintings();
+        setRecords(data);
+      } catch (error) {
+        console.error("Error fetching liked paintings:", error);
       }
-      const data = await response.json();
-      setRecords(data);
     }
-    getRecords();
+    getRecordsFromDB();
   }, []);
 
-  async function deleteRecord(id) {
-    await fetch(`http://localhost:5050/record/${id}`, {
-      method: 'DELETE'
-    });
-    const newRecords = records.filter((el) => el._id !== id);
-    setRecords(newRecords);
+  async function deleteRecordFromDB(id) {
+    try {
+      const success = await removeLikedPaintingById(id);
+      if (success) {
+        setRecords(prevRecords => prevRecords.filter((el) => el._id !== id));
+      } else {
+        console.warn("Painting to delete not found, ID:", id);
+      }
+    } catch (error) {
+      console.error("Error deleting painting:", error);
+    }
   }
+
 
   return (
     <div className="saved_paintings">
@@ -52,7 +56,7 @@ function SavedPaintings() {
         {records.map((record) => (
           <PaintingProfile
             record={record}
-            deleteRecord={deleteRecord}
+            deleteRecord={deleteRecordFromDB}
             key={record._id}
           />
         ))}
