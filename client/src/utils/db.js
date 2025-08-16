@@ -1,13 +1,30 @@
 // MongoDB-based API client for liked paintings
 const API_BASE_URL = 'http://localhost:5050';
 
+// Helper function to get or create userId
+function getUserId() {
+  let userId = localStorage.getItem('userId');
+  if (!userId) {
+    userId = crypto.randomUUID();
+    localStorage.setItem('userId', userId);
+  }
+  return userId;
+}
+
+// Helper function to get headers with userId
+function getHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'x-user-id': getUserId()
+  };
+}
+
 export async function addLikedPainting(painting) {
   try {
     const response = await fetch(`${API_BASE_URL}/record`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
+      credentials: 'include',
       body: JSON.stringify({
         title: painting.title,
         artist: painting.artist,
@@ -29,7 +46,10 @@ export async function addLikedPainting(painting) {
 
 export async function getAllLikedPaintings() {
   try {
-    const response = await fetch(`${API_BASE_URL}/record`);
+    const response = await fetch(`${API_BASE_URL}/record`, {
+      headers: getHeaders(),
+      credentials: 'include'
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -46,7 +66,10 @@ export async function getAllLikedPaintings() {
 export async function getLikedPaintingByUrl(url) {
   try {
     const encodedUrl = encodeURIComponent(url);
-    const response = await fetch(`${API_BASE_URL}/record/check/${encodedUrl}`);
+    const response = await fetch(`${API_BASE_URL}/record/check/${encodedUrl}`, {
+      headers: getHeaders(),
+      credentials: 'include'
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -64,6 +87,8 @@ export async function removeLikedPaintingById(id) {
   try {
     const response = await fetch(`${API_BASE_URL}/record/${id}`, {
       method: 'DELETE',
+      headers: getHeaders(),
+      credentials: 'include'
     });
 
     if (!response.ok) {
@@ -83,7 +108,10 @@ export async function removeLikedPaintingById(id) {
 
 export async function getUniqueLikedArtistsWithCounts() {
   try {
-    const response = await fetch(`${API_BASE_URL}/record/artists`);
+    const response = await fetch(`${API_BASE_URL}/record/artists`, {
+      headers: getHeaders(),
+      credentials: 'include'
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -99,7 +127,10 @@ export async function getUniqueLikedArtistsWithCounts() {
 
 export async function hasLikedRecords() {
   try {
-    const response = await fetch(`${API_BASE_URL}/record/hasRecords`);
+    const response = await fetch(`${API_BASE_URL}/record/hasRecords`, {
+      headers: getHeaders(),
+      credentials: 'include'
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -117,9 +148,8 @@ export async function getRecommendedArtists(artists, counts) {
   try {
     const response = await fetch(`${API_BASE_URL}/recommend`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
+      credentials: 'include',
       body: JSON.stringify({ artists, counts }),
     });
 
@@ -252,15 +282,16 @@ export function getAllTagsFromSavedPaintings() {
 
 const VISITED_PAINTINGS_KEY = 'visitedPaintings';
 
-export function markPaintingAsViewed(paintingId) {
+export async function markPaintingAsViewed(paintingId) {
   try {
-    const visited = JSON.parse(sessionStorage.getItem(VISITED_PAINTINGS_KEY) || '[]');
-    if (!visited.includes(paintingId)) {
-      visited.push(paintingId);
-      sessionStorage.setItem(VISITED_PAINTINGS_KEY, JSON.stringify(visited));
-    }
+    await fetch(`${API_BASE_URL}/viewed`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'include', // This needs to be outside headers
+      body: JSON.stringify({ paintingId }),
+    });
   } catch (error) {
-    console.error('Failed to mark painting as viewed:', error);
+    console.error('Failed to mark painting as viewed on server:', error);
   }
 }
 
@@ -280,6 +311,7 @@ export function getVisitedPaintings() {
 export async function getRandomUnviewedPainting() {
   try {
     const response = await fetch(`${API_BASE_URL}/random-unviewed`, {
+      headers: getHeaders(),
       credentials: 'include' // Important for session-based tracking
     });
     

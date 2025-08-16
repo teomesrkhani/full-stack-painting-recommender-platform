@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node --env-file=config.env server.js",
-    "server": "node --env-file=config.env server"
+    "start": "node --env-file=.env server.js",
+    "server": "node --env-file=.env server"
   },
   "keywords": [],
   "author": "",

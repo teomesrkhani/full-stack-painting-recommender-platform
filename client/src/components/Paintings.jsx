@@ -6,13 +6,8 @@ import {
   removeLikedPaintingById,
   getLikedPaintingByUrl,
   getUniqueLikedArtistsWithCounts,
-  getRecommendedArtists,
   getRandomUnviewedPainting,
   markPaintingAsViewed,
-  addLikedPaintingToLocalStorage,
-  isLikedPaintingInLocalStorage,
-  removeLikedPaintingFromLocalStorage,
-  getUniqueLikedArtistsFromLocalStorage
 } from '../utils/db';
 
 const PaintingInfo = ({ url, title, artist, originalUrl }) => (
@@ -37,47 +32,44 @@ const PaintingInfo = ({ url, title, artist, originalUrl }) => (
 
 function PaintingGenerator() {
   const [paintingData, setPaintingData] = useState(null);
-  const [nextPainting, setNextPainting] = useState(null);
   const [likedArtistPool, setLikedArtistPool] = useState({ artists: [], counts: [] });
+  const effectRan = useRef(false);
 
-  const preloadImage = (url) => {
-    const img = new Image();
-    img.src = url;
-  };
-
-  const fetchAndPreload = useCallback(async () => {
+  const fetchPainting = useCallback(async () => {
     try {
       const painting = await getRandomUnviewedPainting();
       if (painting) {
-        const isLiked = !!isLikedPaintingInLocalStorage(painting.imageUrl);
-        preloadImage(painting.imageUrl);
-        return { ...painting, liked: isLiked };
+        const likedPainting = await getLikedPaintingByUrl(painting.imageUrl);
+        return { ...painting, liked: !!likedPainting };
       }
       return null;
     } catch (error) {
-      console.error("Error fetching and preloading painting:", error);
+      console.error("Error fetching painting:", error);
       return null;
     }
   }, []);
 
+  // Effect for INITIAL load. Runs only ONCE, even in StrictMode.
   useEffect(() => {
-    const initialize = async () => {
-      const firstPainting = await fetchAndPreload();
-      if (firstPainting) {
-        setPaintingData(firstPainting);
-        markPaintingAsViewed(firstPainting._id);
-        const preloadedNext = await fetchAndPreload();
-        setNextPainting(preloadedNext);
-      } else {
-        setPaintingData({ title: "No paintings available" });
-      }
+    if (effectRan.current === false) {
+      const initialize = async () => {
+        const firstPainting = await fetchPainting();
+        if (firstPainting) {
+          setPaintingData(firstPainting);
+        } else {
+          setPaintingData({ title: "No paintings available" });
+        }
+      };
+      initialize();
+    }
+    return () => {
+      effectRan.current = true;
     };
-    initialize();
-  }, [fetchAndPreload]);
+  }, [fetchPainting]);
 
-  const refreshLikedArtistPool = useCallback(() => {
+  const refreshLikedArtistPool = useCallback(async () => {
     try {
-      const details = getUniqueLikedArtistsFromLocalStorage();
+      const details = await getUniqueLikedArtistsWithCounts();
       setLikedArtistPool(details);
     } catch (error) {
       console.error("Error fetching liked artists for generator:", error);
@@ -90,25 +82,19 @@ function PaintingGenerator() {
   }, [refreshLikedArtistPool]);
 
   const showNextPainting = useCallback(async () => {
-    if (nextPainting) {
-      setPaintingData(nextPainting);
-      markPaintingAsViewed(nextPainting._id);
-      setNextPainting(null); // Clear next painting, it will be fetched below
-      const preloadedNext = await fetchAndPreload();
-      setNextPainting(preloadedNext);
-    } else {
-      // Fallback if preloading failed or was slow
-      const newPainting = await fetchAndPreload();
-      if (newPainting) {
-        setPaintingData(newPainting);
-        markPaintingAsViewed(newPainting._id);
-      } else {
-        setPaintingData({ title: "No more paintings available" });
-      }
+    if (paintingData && paintingData._id) {
+      markPaintingAsViewed(paintingData._id);
     }
-  }, [nextPainting, fetchAndPreload]);
+    
+    const newPainting = await fetchPainting();
+    if (newPainting) {
+      setPaintingData(newPainting);
+    } else {
+      setPaintingData({ title: "No more paintings available" });
+    }
+  }, [paintingData, fetchPainting]);
 
-  const toggleLikePainting = useCallback(() => {
+  const toggleLikePainting = useCallback(async () => {
     if (!paintingData || !paintingData.imageUrl) return;
     
     const currentlyLiked = paintingData.liked;
@@ -118,20 +104,20 @@ function PaintingGenerator() {
     
     try {
       if (newLikedState) {
-        addLikedPaintingToLocalStorage({
-          url: paintingData.imageUrl,
-          imageUrl: paintingData.imageUrl,
+        await addLikedPainting({
           title: paintingData.title,
           artist: paintingData.artist,
+          url: paintingData.imageUrl,
+          imageUrl: paintingData.imageUrl,
           originalUrl: paintingData.url,
         });
       } else {
-        const likedPainting = isLikedPaintingInLocalStorage(paintingData.imageUrl);
+        const likedPainting = await getLikedPaintingByUrl(paintingData.imageUrl);
         if (likedPainting) {
-          removeLikedPaintingFromLocalStorage(likedPainting.id);
+          await removeLikedPaintingById(likedPainting._id);
         }
       }
-      refreshLikedArtistPool();
+      await refreshLikedArtistPool();
     } catch (error) {
       console.error("Error toggling like state:", error);
       setPaintingData(prev => ({ ...prev, liked: currentlyLiked }));

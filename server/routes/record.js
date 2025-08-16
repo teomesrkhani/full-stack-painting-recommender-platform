@@ -4,11 +4,16 @@ import { ObjectId } from "mongodb";
 
 const router = express.Router();
 
-// Get all liked paintings
+// Get all liked paintings for the current user
 router.get("/", async (req, res) => {
   try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'No user ID found' });
+    }
+    
     let collection = await db.collection("likedPaintings");
-    let results = await collection.find({}).sort({ likedTimestamp: -1 }).toArray();
+    let results = await collection.find({ userId }).sort({ likedTimestamp: -1 }).toArray();
     res.send(results).status(200);
   } catch (err) {
     console.error(err);
@@ -16,23 +21,31 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Add a liked painting
+// Add a liked painting for the current user
 router.post("/", async (req, res) => {
   try {
-    const { title, artist, url } = req.body;
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'No user ID found' });
+    }
     
-    // Check if painting already exists
+    const { title, artist, url, imageUrl, originalUrl } = req.body;
+    
+    // Check if painting already exists for this user
     let collection = await db.collection("likedPaintings");
-    const existingPainting = await collection.findOne({ url });
+    const existingPainting = await collection.findOne({ userId, imageUrl: imageUrl || url });
     
     if (existingPainting) {
       return res.status(200).send(existingPainting);
     }
     
     let newDocument = {
+      userId,
       title,
       artist,
-      url,
+      url: imageUrl || url, // Use imageUrl as primary URL
+      imageUrl: imageUrl || url,
+      originalUrl: originalUrl || url,
       likedTimestamp: Date.now()
     };
     
@@ -44,12 +57,17 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Check if a painting is liked by URL
+// Check if a painting is liked by URL for the current user
 router.get("/check/:url", async (req, res) => {
   try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'No user ID found' });
+    }
+    
     const url = decodeURIComponent(req.params.url);
     let collection = await db.collection("likedPaintings");
-    let result = await collection.findOne({ url });
+    let result = await collection.findOne({ userId, $or: [{ url }, { imageUrl: url }] });
     res.send({ liked: !!result, painting: result }).status(200);
   } catch (err) {
     console.error(err);
@@ -57,10 +75,15 @@ router.get("/check/:url", async (req, res) => {
   }
 });
 
-// Remove a liked painting by ID
+// Remove a liked painting by ID for the current user
 router.delete("/:id", async (req, res) => {
   try {
-    const query = { _id: new ObjectId(req.params.id) };
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'No user ID found' });
+    }
+    
+    const query = { _id: new ObjectId(req.params.id), userId };
     const collection = db.collection("likedPaintings");
     let result = await collection.deleteOne(query);
 
@@ -75,11 +98,19 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// Get unique artists with counts
+// Get unique artists with counts for the current user
 router.get("/artists", async (req, res) => {
   try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'No user ID found' });
+    }
+    
     let collection = await db.collection("likedPaintings");
     let pipeline = [
+      {
+        $match: { userId }
+      },
       {
         $group: {
           _id: "$artist",
@@ -103,11 +134,16 @@ router.get("/artists", async (req, res) => {
   }
 });
 
-// Check if there are any liked records
+// Check if there are any liked records for the current user
 router.get("/hasRecords", async (req, res) => {
   try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'No user ID found' });
+    }
+    
     let collection = await db.collection("likedPaintings");
-    let count = await collection.countDocuments();
+    let count = await collection.countDocuments({ userId });
     res.send({ hasRecords: count > 0 }).status(200);
   } catch (err) {
     console.error(err);
