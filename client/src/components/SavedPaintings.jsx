@@ -2,19 +2,33 @@ import { useState, useEffect } from 'react';
 import { FaTrash } from 'react-icons/fa';
 import '../styles/saved_paintings.css';
 import '../styles/home.css';
-import { getAllLikedPaintings, removeLikedPaintingById } from '../utils/db';
+import { 
+  getAllLikedPaintingsFromLocalStorage, 
+  removeLikedPaintingFromLocalStorage 
+} from '../utils/db';
 
 const PaintingProfile = (props) => (
   <div className="profiles">
     <div className="profile-image-container">
-      <img className="imgs" src={props.record.url} alt={props.record.title} />
+      {props.record.originalUrl ? (
+        <a 
+          href={props.record.originalUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ cursor: 'pointer' }}
+        >
+          <img className="imgs" src={props.record.imageUrl || props.record.url} alt={props.record.title} />
+        </a>
+      ) : (
+        <img className="imgs" src={props.record.imageUrl || props.record.url} alt={props.record.title} />
+      )}
     </div>
     <div className="profile-content">
       <div className="profile-text">
         <h2>{props.record.title}</h2>
         <p>By {props.record.artist}</p>
       </div>
-      <button className="btn" onClick={() => props.deleteRecord(props.record._id)}>
+      <button className="btn" onClick={() => props.deleteRecord(props.record.id)}>
         <FaTrash />
       </button>
     </div>
@@ -25,27 +39,27 @@ function SavedPaintings() {
   const [records, setRecords] = useState([]);
 
   useEffect(() => {
-    async function getRecordsFromDB() {
+    function getRecordsFromLocalStorage() {
       try {
-        const data = await getAllLikedPaintings();
+        const data = getAllLikedPaintingsFromLocalStorage();
         setRecords(data);
       } catch (error) {
-        console.error("Error fetching liked paintings:", error);
+        console.error("Error fetching liked paintings from LocalStorage:", error);
       }
     }
-    getRecordsFromDB();
+    getRecordsFromLocalStorage();
   }, []);
 
-  async function deleteRecordFromDB(id) {
+  function deleteRecordFromLocalStorage(id) {
     try {
-      const success = await removeLikedPaintingById(id);
+      const success = removeLikedPaintingFromLocalStorage(id);
       if (success) {
-        setRecords(prevRecords => prevRecords.filter((el) => el._id !== id));
+        setRecords(prevRecords => prevRecords.filter((el) => el.id !== id));
       } else {
         console.warn("Painting to delete not found, ID:", id);
       }
     } catch (error) {
-      console.error("Error deleting painting:", error);
+      console.error("Error deleting painting from LocalStorage:", error);
     }
   }
 
@@ -56,8 +70,8 @@ function SavedPaintings() {
         {records.map((record) => (
           <PaintingProfile
             record={record}
-            deleteRecord={deleteRecordFromDB}
-            key={record._id}
+            deleteRecord={deleteRecordFromLocalStorage}
+            key={record.id}
           />
         ))}
       </div>

@@ -46,7 +46,7 @@ const TabContent = ({ activeTab, hasRecords }) => {
         <GenAIPaintingGenerator />
       ) : (
         <div className="error-text" role="alert">
-          Please like a painting first to use this feature
+          Please like a painting first to use the "Liked Artists" mode in AI Generator.
         </div>
       );
     case 3:

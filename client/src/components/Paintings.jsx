@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { debounce } from 'lodash';
 import '../styles/paintings.css';
 import {
@@ -6,49 +6,78 @@ import {
   removeLikedPaintingById,
   getLikedPaintingByUrl,
   getUniqueLikedArtistsWithCounts,
-  getRecommendedArtists
+  getRecommendedArtists,
+  getRandomUnviewedPainting,
+  markPaintingAsViewed,
+  addLikedPaintingToLocalStorage,
+  isLikedPaintingInLocalStorage,
+  removeLikedPaintingFromLocalStorage,
+  getUniqueLikedArtistsFromLocalStorage
 } from '../utils/db';
 
-const PaintingInfo = ({ url, title, artist }) => (
+const PaintingInfo = ({ url, title, artist, originalUrl }) => (
   <div className='paintingInfo'>
-    <img className='paintingImg' src={url} alt={title} loading="lazy" />
+    <div className="painting-image-wrapper">
+      {originalUrl ? (
+        <a 
+          href={originalUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ cursor: 'pointer' }}
+        >
+          <img className='paintingImg' src={url} alt={title} loading="lazy" />
+        </a>
+      ) : (
+        <img className='paintingImg' src={url} alt={title} loading="lazy" />
+      )}
+    </div>
     <h2>{title}</h2>
   </div>
 );
 
 function PaintingGenerator() {
-  const [paintingData, setPaintingData] = useState({
-    url: "",
-    title: "",
-    artist: "",
-    liked: false,
-  });
-
-  const [artistMasterList, setArtistMasterList] = useState({});
+  const [paintingData, setPaintingData] = useState(null);
+  const [nextPainting, setNextPainting] = useState(null);
   const [likedArtistPool, setLikedArtistPool] = useState({ artists: [], counts: [] });
 
-  // Fetch the main artwork data from `final_out.json`
-  useEffect(() => {
-    const fetchArtworkData = async () => {
-      try {
-        const jsonUrl = `${import.meta.env.BASE_URL}final_out.json`;
-        const response = await fetch(jsonUrl);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status} for ${jsonUrl}`);
-        }
-        const data = await response.json();
-        setArtistMasterList(data);
-      } catch (err) {
-        console.error("Error loading artist master list:", err);
+  const preloadImage = (url) => {
+    const img = new Image();
+    img.src = url;
+  };
+
+  const fetchAndPreload = useCallback(async () => {
+    try {
+      const painting = await getRandomUnviewedPainting();
+      if (painting) {
+        const isLiked = !!isLikedPaintingInLocalStorage(painting.imageUrl);
+        preloadImage(painting.imageUrl);
+        return { ...painting, liked: isLiked };
       }
-    };
-    fetchArtworkData();
+      return null;
+    } catch (error) {
+      console.error("Error fetching and preloading painting:", error);
+      return null;
+    }
   }, []);
 
-  // Fetch liked artists from the database for the generator pool
-  const refreshLikedArtistPool = useCallback(async () => {
+  useEffect(() => {
+    const initialize = async () => {
+      const firstPainting = await fetchAndPreload();
+      if (firstPainting) {
+        setPaintingData(firstPainting);
+        markPaintingAsViewed(firstPainting._id);
+        const preloadedNext = await fetchAndPreload();
+        setNextPainting(preloadedNext);
+      } else {
+        setPaintingData({ title: "No paintings available" });
+      }
+    };
+    initialize();
+  }, [fetchAndPreload]);
+
+  const refreshLikedArtistPool = useCallback(() => {
     try {
-      const details = await getUniqueLikedArtistsWithCounts();
+      const details = getUniqueLikedArtistsFromLocalStorage();
       setLikedArtistPool(details);
     } catch (error) {
       console.error("Error fetching liked artists for generator:", error);
@@ -56,139 +85,92 @@ function PaintingGenerator() {
     }
   }, []);
 
-  // fetch liked artists pool after list is ready
   useEffect(() => {
-    if (Object.keys(artistMasterList).length > 0) {
-      refreshLikedArtistPool();
-    }
-  }, [artistMasterList, refreshLikedArtistPool]);
+    refreshLikedArtistPool();
+  }, [refreshLikedArtistPool]);
 
-  const checkIfPaintingIsLiked = useCallback(async (url) => {
-    if (!url) return false;
-    try {
-      const likedPainting = await getLikedPaintingByUrl(url);
-      return !!likedPainting;
-    } catch (error) {
-      console.error("Error checking if painting is liked:", error);
-      return false;
-    }
-  }, []);
-
-  const generateNewPainting = useCallback(async () => {
-    if (Object.keys(artistMasterList).length === 0) {
-      return;
-    }
-    try {
-      let selectedArtistName = "";
-      const availableArtistsInMasterList = Object.keys(artistMasterList);
-      if (availableArtistsInMasterList.length === 0) {
-        setPaintingData({ url: "", title: "No artwork data found", artist: "", liked: false });
-        return;
-      }
-
-      if (likedArtistPool.artists.length > 0) {
-        const randomChoice = Math.random();
-        
-        if (randomChoice < 0.4) { // 40% chance to select from liked artists
-          selectedArtistName = likedArtistPool.artists[Math.floor(Math.random() * likedArtistPool.artists.length)];
-          console.log('Select from liked artists', likedArtistPool.artists);
-          
-        } else if (randomChoice < 0.8) { // 40% chance to get a recommendation
-          const recommendedArtists = await getRecommendedArtists(likedArtistPool.artists, likedArtistPool.counts);
-          if (recommendedArtists.length > 0) {
-            const top5Recommended = recommendedArtists.slice(0, 5);
-            selectedArtistName = top5Recommended[Math.floor(Math.random() * top5Recommended.length)];
-            console.log('Selected from top 5 recommendations:', selectedArtistName);
-          } else {
-            selectedArtistName = availableArtistsInMasterList[Math.floor(Math.random() * availableArtistsInMasterList.length)];
-            console.log('Recommendation failed, selected random artist');
-          }
-        } else { // 20% chance: Random artist
-          selectedArtistName = availableArtistsInMasterList[Math.floor(Math.random() * availableArtistsInMasterList.length)];
-          console.log('Select a random artist');
-        }
-      } else { // No liked artists - select random
-        selectedArtistName = availableArtistsInMasterList[Math.floor(Math.random() * availableArtistsInMasterList.length)];
-        console.log('No liked artists - select random artist');
-      }
-
-      const artworksBySelectedArtist = artistMasterList[selectedArtistName];
-      if (artworksBySelectedArtist && artworksBySelectedArtist.length > 0) {
-        const randomArtwork = artworksBySelectedArtist[Math.floor(Math.random() * artworksBySelectedArtist.length)];
-        const isNowLiked = await checkIfPaintingIsLiked(randomArtwork.URL);
-        setPaintingData({
-          url: randomArtwork.URL || "",
-          title: randomArtwork.Artwork || "Untitled",
-          artist: selectedArtistName || "Unknown Artist",
-          liked: isNowLiked,
-        });
+  const showNextPainting = useCallback(async () => {
+    if (nextPainting) {
+      setPaintingData(nextPainting);
+      markPaintingAsViewed(nextPainting._id);
+      setNextPainting(null); // Clear next painting, it will be fetched below
+      const preloadedNext = await fetchAndPreload();
+      setNextPainting(preloadedNext);
+    } else {
+      // Fallback if preloading failed or was slow
+      const newPainting = await fetchAndPreload();
+      if (newPainting) {
+        setPaintingData(newPainting);
+        markPaintingAsViewed(newPainting._id);
       } else {
-        // Fallback if error, try generating again
-        if(availableArtistsInMasterList.length > 0) generateNewPainting(); 
+        setPaintingData({ title: "No more paintings available" });
       }
-    } catch (error) {
-      console.error("Error in generateNewPainting:", error);
     }
-  }, [artistMasterList, likedArtistPool, checkIfPaintingIsLiked]);
+  }, [nextPainting, fetchAndPreload]);
 
-  const debouncedGeneratePainting = useCallback(debounce(generateNewPainting, 300), [generateNewPainting]);
-
-  // Like/Unlike Painting Logic
-  const toggleLikePainting = useCallback(async () => {
-    if (!paintingData.url) return;
+  const toggleLikePainting = useCallback(() => {
+    if (!paintingData || !paintingData.imageUrl) return;
+    
     const currentlyLiked = paintingData.liked;
     const newLikedState = !currentlyLiked;
+    
     setPaintingData(prev => ({ ...prev, liked: newLikedState }));
+    
     try {
       if (newLikedState) {
-        await addLikedPainting({
-          url: paintingData.url,
+        addLikedPaintingToLocalStorage({
+          url: paintingData.imageUrl,
+          imageUrl: paintingData.imageUrl,
           title: paintingData.title,
           artist: paintingData.artist,
+          originalUrl: paintingData.url,
         });
       } else {
-        const likedPainting = await getLikedPaintingByUrl(paintingData.url);
+        const likedPainting = isLikedPaintingInLocalStorage(paintingData.imageUrl);
         if (likedPainting) {
-          await removeLikedPaintingById(likedPainting._id);
+          removeLikedPaintingFromLocalStorage(likedPainting.id);
         }
       }
-      await refreshLikedArtistPool();
+      refreshLikedArtistPool();
     } catch (error) {
       console.error("Error toggling like state:", error);
       setPaintingData(prev => ({ ...prev, liked: currentlyLiked }));
     }
   }, [paintingData, refreshLikedArtistPool]);
 
-  useEffect(() => {
-    if (paintingData.url === "" && Object.keys(artistMasterList).length > 0) {
-      generateNewPainting();
-    }
-  }, [paintingData.url, artistMasterList, generateNewPainting]);
-  
+  const debouncedShowNextPainting = useCallback(debounce(showNextPainting, 200), [showNextPainting]);
+
+  if (!paintingData) {
+    return (
+      <div className='paintingContainer'>
+        <div className='paintingInfo'>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='paintingContainer'>
-      {paintingData.url ? (
-        <PaintingInfo
-          url={paintingData.url}
-          title={paintingData.title}
-          artist={paintingData.artist}
-        />
-      ) : (
-        <div className="paintingInfo"><h2>&nbsp;</h2></div>
-      )}
+      <PaintingInfo
+        url={paintingData.imageUrl}
+        title={paintingData.title}
+        artist={paintingData.artist}
+        originalUrl={paintingData.url}
+      />
       <div className="actions-container">
-        <button className='action next' onClick={debouncedGeneratePainting}>
+        <button 
+          className='action next' 
+          onClick={debouncedShowNextPainting}
+        >
           Next
         </button>
-        {
-          <button
-            className={`action like ${paintingData.liked ? 'liked' : ''}`}
-            onClick={toggleLikePainting}
-          >
-            {paintingData.liked ? 'Unlike' : 'Like'}
-          </button>
-        }
+        <button
+          className={`action like ${paintingData.liked ? 'liked' : ''}`}
+          onClick={toggleLikePainting}
+          disabled={!paintingData.imageUrl}
+        >
+          {paintingData.liked ? 'Unlike' : 'Like'}
+        </button>
       </div>
     </div>
   );

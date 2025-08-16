@@ -13,8 +13,14 @@
   "type": "module",
   "description": "",
   "dependencies": {
+    "compression": "^1.8.1",
+    "connect-redis": "^9.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "mongodb": "^6.12.0"
+    "express-session": "^1.18.2",
+    "mongodb": "^6.12.0",
+    "node-fetch": "^3.3.2",
+    "uuid": "^11.1.0"
   }
 }
