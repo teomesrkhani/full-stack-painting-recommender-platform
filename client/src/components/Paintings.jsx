@@ -104,12 +104,14 @@ function PaintingGenerator() {
     
     try {
       if (newLikedState) {
+        console.log(`\n\npaintingData ${JSON.stringify(paintingData)} paintingData\n\n`)
         await addLikedPainting({
           title: paintingData.title,
           artist: paintingData.artist,
-          url: paintingData.imageUrl,
+          url: paintingData.url,
           imageUrl: paintingData.imageUrl,
           originalUrl: paintingData.url,
+          _id: paintingData._id
         });
       } else {
         const likedPainting = await getLikedPaintingByUrl(paintingData.imageUrl);

@@ -1,0 +1,9 @@
+openai
+python-dotenv
+pymongo
+opensearch-py
+requests-aws4auth
+boto3
+ijson
+numpy
+chromadb

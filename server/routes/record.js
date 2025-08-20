@@ -1,6 +1,7 @@
 import express from "express";
 import db from "../db/connection.js";
 import { ObjectId } from "mongodb";
+import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ router.post("/", async (req, res) => {
       return res.status(401).json({ error: 'No user ID found' });
     }
     
-    const { title, artist, url, imageUrl, originalUrl } = req.body;
+    const { title, artist, url, imageUrl, originalUrl, _id, originalArtworkId } = req.body;
     
     // Check if painting already exists for this user
     let collection = await db.collection("likedPaintings");
@@ -46,6 +47,7 @@ router.post("/", async (req, res) => {
       url: imageUrl || url, // Use imageUrl as primary URL
       imageUrl: imageUrl || url,
       originalUrl: originalUrl || url,
+      originalArtworkId: _id, // Store the original artwork ID for ChromaDB
       likedTimestamp: Date.now()
     };
     
@@ -148,6 +150,17 @@ router.get("/hasRecords", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error checking for liked records");
+  }
+});
+
+// Add a route to generate and return a user ID
+router.get('/user-session', (req, res) => {
+  try {
+    const userId = uuidv4();
+    res.status(200).json({ userId });
+  } catch (err) {
+    console.error('Error generating user ID:', err);
+    res.status(500).json({ error: 'Failed to generate user ID' });
   }
 });
 

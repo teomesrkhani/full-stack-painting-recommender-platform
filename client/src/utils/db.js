@@ -1,13 +1,43 @@
 // MongoDB-based API client for liked paintings
 const API_BASE_URL = 'http://localhost:5050';
 
+// Global cache to ensure single user ID per session
+let cachedUserId = null;
+
 // Helper function to get or create userId
 function getUserId() {
+  // Use cached userId if available
+  if (cachedUserId) {
+    console.log('🔒 Using cached userId:', cachedUserId);
+    return cachedUserId;
+  }
+  
+  console.log('⚠️ No cached userId, checking localStorage...');
+  // Always use localStorage as the single source of truth
   let userId = localStorage.getItem('userId');
   if (!userId) {
     userId = crypto.randomUUID();
     localStorage.setItem('userId', userId);
+    console.log('🆔 Created new userId in localStorage:', userId);
+  } else {
+    console.log('� Using existing userId from localStorage:', userId);
   }
+  
+  // Also try to sync with cookie if it exists and is different
+  const cookieUserId = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('userId='))
+    ?.split('=')[1];
+  
+  if (cookieUserId && cookieUserId !== userId) {
+    console.log('🔄 Cookie has different userId, prioritizing localStorage:', userId);
+    // Set cookie to match localStorage to avoid conflicts
+    document.cookie = `userId=${userId}; path=/; max-age=${365*24*60*60}`;
+  }
+  
+  // Cache it for this session
+  cachedUserId = userId;
+  
   return userId;
 }
 
@@ -21,125 +51,75 @@ function getHeaders() {
 
 export async function addLikedPainting(painting) {
   try {
-    const response = await fetch(`${API_BASE_URL}/record`, {
-      method: 'POST',
-      headers: getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify({
-        title: painting.title,
-        artist: painting.artist,
-        url: painting.url,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result._id;
+    console.log('🔍 [addLikedPainting] Using localStorage for painting:', painting);
+    
+    // Generate a unique ID for localStorage
+    const paintingId = painting._id;
+    const paintingWithId = { ...painting, _id: paintingId };
+    
+    // Add to localStorage only (no MongoDB write operations)
+    addLikedPaintingToLocalStorage(paintingWithId);
+    
+    console.log('✅ Added painting to localStorage with ID:', paintingId);
+    return paintingId;
   } catch (error) {
-    console.error('Failed to add painting to MongoDB:', error);
+    console.error('Failed to add painting to localStorage:', error);
     throw error;
   }
 }
 
 export async function getAllLikedPaintings() {
   try {
-    const response = await fetch(`${API_BASE_URL}/record`, {
-      headers: getHeaders(),
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const paintings = await response.json();
+    // Get all liked paintings from localStorage only (no MongoDB read operations)
+    const paintings = getAllLikedPaintingsFromLocalStorage();
+    console.log('🔍 [getAllLikedPaintings] LocalStorage response:', paintings);
     return paintings;
   } catch (error) {
-    console.error('Failed to fetch liked paintings from MongoDB:', error);
+    console.error('Failed to fetch liked paintings from localStorage:', error);
     return [];
   }
 }
 
 export async function getLikedPaintingByUrl(url) {
   try {
-    const encodedUrl = encodeURIComponent(url);
-    const response = await fetch(`${API_BASE_URL}/record/check/${encodedUrl}`, {
-      headers: getHeaders(),
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result.liked ? result.painting : null;
+    // Check localStorage only (no MongoDB read operations)
+    const painting = isLikedPaintingInLocalStorage(url);
+    return painting;
   } catch (error) {
-    console.error('Failed to check if painting is liked in MongoDB:', error);
+    console.error('Failed to check if painting is liked in localStorage:', error);
     return null;
   }
 }
 
 export async function removeLikedPaintingById(id) {
   try {
-    const response = await fetch(`${API_BASE_URL}/record/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders(),
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return false; // Painting not found
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result.deletedCount > 0;
+    // Remove from localStorage only (no MongoDB delete operations)
+    const success = removeLikedPaintingFromLocalStorage(id);
+    return success;
   } catch (error) {
-    console.error('Failed to remove painting from MongoDB:', error);
+    console.error('Failed to remove painting from localStorage:', error);
     throw error;
   }
 }
 
 export async function getUniqueLikedArtistsWithCounts() {
   try {
-    const response = await fetch(`${API_BASE_URL}/record/artists`, {
-      headers: getHeaders(),
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
+    // Get artist counts from localStorage only (no MongoDB read operations)
+    const result = getUniqueLikedArtistsFromLocalStorage();
     return { artists: result.artists, counts: result.counts };
   } catch (error) {
-    console.error('Failed to fetch artist counts from MongoDB:', error);
+    console.error('Failed to fetch artist counts from localStorage:', error);
     return { artists: [], counts: [] };
   }
 }
 
 export async function hasLikedRecords() {
   try {
-    const response = await fetch(`${API_BASE_URL}/record/hasRecords`, {
-      headers: getHeaders(),
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result.hasRecords;
+    // Check localStorage only (no MongoDB read operations)
+    const paintings = getAllLikedPaintingsFromLocalStorage();
+    return paintings.length > 0;
   } catch (error) {
-    console.error('Failed to check for liked records in MongoDB:', error);
+    console.error('Failed to check for liked records in localStorage:', error);
     return false;
   }
 }
@@ -174,24 +154,27 @@ export async function getRecommendedArtists(artists, counts) {
 export function addLikedPaintingToLocalStorage(painting) {
   try {
     const liked = JSON.parse(localStorage.getItem('likedPaintings') || '[]');
+
+    console.log(`liked, ${JSON.stringify(liked)},`);
+    console.log(`toAdd (asdf), ${JSON.stringify(painting)},`);
     const newPainting = {
-      id: Date.now() + Math.random(), // Simple ID generation
+      _id: painting._id, // Use the _id from the database
       title: painting.title,
       artist: painting.artist,
-      url: painting.url,
+      url: painting.originalUrl,
       imageUrl: painting.imageUrl,
-      originalUrl: painting.originalUrl,
-      timestamp: new Date().toISOString(),
+      originalUrl: painting.originalArtworkId,
+      // timestamp: new Date().toISOString(),
     };
     
-    // Check if painting already exists
-    const exists = liked.some(p => p.imageUrl === painting.imageUrl);
+    // Check if painting already exists using _id
+    const exists = liked.some(p => p._id === painting._id);
     if (!exists) {
       liked.push(newPainting);
       localStorage.setItem('likedPaintings', JSON.stringify(liked));
     }
     
-    return newPainting.id;
+    return newPainting._id;
   } catch (error) {
     console.error('Failed to add painting to LocalStorage:', error);
     throw error;
@@ -207,10 +190,14 @@ export function getAllLikedPaintingsFromLocalStorage() {
   }
 }
 
-export function isLikedPaintingInLocalStorage(imageUrl) {
+export function isLikedPaintingInLocalStorage(url) {
   try {
     const liked = JSON.parse(localStorage.getItem('likedPaintings') || '[]');
-    return liked.find(painting => painting.imageUrl === imageUrl);
+    return liked.find(painting => 
+      painting.imageUrl === url || 
+      painting.url === url ||
+      painting.originalUrl === url
+    );
   } catch (error) {
     console.error('Failed to check if painting is liked in LocalStorage:', error);
     return null;
@@ -220,7 +207,8 @@ export function isLikedPaintingInLocalStorage(imageUrl) {
 export function removeLikedPaintingFromLocalStorage(id) {
   try {
     const liked = JSON.parse(localStorage.getItem('likedPaintings') || '[]');
-    const filtered = liked.filter(painting => painting.id !== id);
+    // Use _id field instead of id field to match database structure
+    const filtered = liked.filter(painting => painting._id !== id);
     localStorage.setItem('likedPaintings', JSON.stringify(filtered));
     return filtered.length < liked.length; // Return true if something was removed
   } catch (error) {
@@ -310,9 +298,19 @@ export function getVisitedPaintings() {
 
 export async function getRandomUnviewedPainting() {
   try {
+    console.log('🔍 [getRandomUnviewedPainting] Using userId:', getUserId());
+    // Get saved paintings from database to send to server
+    const savedPaintings = await getAllLikedPaintings();
+    console.log('🔍 [getRandomUnviewedPainting] savedPaintings from getAllLikedPaintings():', savedPaintings);
+    
+    // Use POST method to send saved paintings data
     const response = await fetch(`${API_BASE_URL}/random-unviewed`, {
+      method: 'POST',
       headers: getHeaders(),
-      credentials: 'include' // Important for session-based tracking
+      credentials: 'include', // Important for session-based tracking
+      body: JSON.stringify({
+        savedPaintings: savedPaintings || []
+      })
     });
     
     if (!response.ok) {
@@ -320,6 +318,7 @@ export async function getRandomUnviewedPainting() {
     }
     
     const painting = await response.json();
+    console.log(`🎨 Received painting from: ${painting.source}`); // Debug log
     return painting;
   } catch (error) {
     console.error('Failed to fetch random unviewed painting:', error);
